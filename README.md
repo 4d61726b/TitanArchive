@@ -1,10 +1,10 @@
 # TitanArchive
-An easy to use multiplatform archive extraction library
+An easy to use multiplatform archive extraction wrapper library for [7-Zip](https://www.7-zip.org/)
 
 ## Features
 
 * Easy API for C and Python. Greatly simplifies the complexity of using [7-Zip](https://www.7-zip.org/)
-* Multiplatform. Supports UNIX and Windows
+* Multiplatform. Supports Linux and Windows
 * Very fast. Written in modern C++
 * Automatically discovers and determines archive type
 * Supports most archive formats: 7z, XZ, BZIP2, GZIP, TAR, ZIP, WIM, AR, ARJ, CAB, CHM, CPIO, CramFS, DMG, EXT, FAT, GPT, HFS, IHEX, ISO, LZH, LZMA, MBR, MSI, NSIS, NTFS, QCOW2, RAR, RPM, SquashFS, UDF, UEFI, VDI, VHD, VMDK, WIM, XAR and Z
