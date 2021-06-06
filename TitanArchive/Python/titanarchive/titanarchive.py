@@ -44,7 +44,7 @@ if not os.path.isfile(TITAN_ARCHIVE_MODULE):
 CODECS = {}
 
 if os.name == 'posix':
-    {'Rar': '/usr/lib/p7zip/Codecs/Rar.so'}
+    CODECS['Rar'] = '/usr/lib/p7zip/Codecs/Rar.so'
 
 class TitanArchiveException(Exception):
     def __init__(self, hr, err_string):
