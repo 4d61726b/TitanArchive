@@ -1,5 +1,5 @@
 # TitanArchive
-An easy to use multiplatform archive extractor library
+An easy to use multiplatform archive extraction library
 
 ## Features
 
@@ -31,7 +31,7 @@ with titanarchive.TitanArchive(data) as ta:
     # Do actions
 ```
 
-#### Open archive from file descriptor
+#### Open archive from file descriptor:
 ```python
 import os
 import titanarchive
@@ -49,19 +49,37 @@ import titanarchive
 with titanarchive.TitanArchive('unknown.dat') as ta:
     print('Format: {}'.format(ta.GetArchiveFormat()))
 ```
+```console
+Format: zip
+```
 
 #### Print all files and directories in archive (Method 1, by path):
 ```python
 import titanarchive
+import os
 
 def print_files(ta, path):
     for item in ta.ListDirectory(path):
+        full_path = os.path.join(path, item.Path)
         if item.IsDir:
-            print_files(ta, item.Path)
-        print('Item: {}'.format(item.Path))
+            print_files(ta, full_path)
+        print('Item: {}'.format(full_path))
 
 with titanarchive.TitanArchive('test.zip') as ta:
     print_files(ta, '')
+```
+```console
+Item: dir1\another_file.txt
+Item: dir1\dir2\another_file.txt
+Item: dir1\dir2\dir3\file.txt
+Item: dir1\dir2\dir3
+Item: dir1\dir2\empty_directory
+Item: dir1\dir2\file.txt
+Item: dir1\dir2
+Item: dir1\empty_directory
+Item: dir1
+Item: empty_directory
+Item: file_at_root.txt
 ```
 
 #### Print all files and directories in archive (Method 2, by index):
@@ -78,6 +96,19 @@ with titanarchive.TitanArchive('test.zip') as ta:
     except titanarchive.TitanArchiveException:
         pass
 ```
+```console
+Item: dir1
+Item: dir1\another_file.txt
+Item: dir1\dir2
+Item: dir1\dir2\another_file.txt
+Item: dir1\dir2\dir3
+Item: dir1\dir2\dir3\file.txt
+Item: dir1\dir2\empty_directory
+Item: dir1\dir2\file.txt
+Item: dir1\empty_directory
+Item: empty_directory
+Item: file_at_root.txt
+```
 
 #### Extract file to memory (Method 1, by path):
 ```python
@@ -85,7 +116,10 @@ import titanarchive
 
 with titanarchive.TitanArchive('test.zip') as ta:
     data = ta.ExtractArchiveItemToBufferByPath('dir1\\another_file.txt')
-    print(data)
+    print(data.read())
+```
+```console
+b'Test Data 123'
 ```
 
 #### Extract file to memory (Method 2, by index):
@@ -95,7 +129,8 @@ import titanarchive
 with titanarchive.TitanArchive('test.zip') as ta:
     properties = ta.GetArchiveItemPropertiesByPath('dir1\\another_file.txt')
     data = ta.ExtractArchiveItemToBufferByIndex(properties.Index)
-    print(data)
+    print(data.read())
 ```
-
-
+```console
+b'Test Data 123'
+```
