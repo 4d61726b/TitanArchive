@@ -120,6 +120,8 @@ class TitanArchiveBDistWheel(bdist_wheel):
 setuptools.setup(
     name = 'titanarchive',
     version = VERSION,
+    description = 'An easy to use multiplatform archive extraction wrapper library for 7-Zip',
+    license = 'LGPL-2.1',
     packages = setuptools.find_packages(where=SETUP_DIR),
     package_dir = {'': SETUP_DIR},
     python_requires = '>=3',
