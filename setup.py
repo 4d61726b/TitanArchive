@@ -26,9 +26,9 @@ if os.name == 'nt':
     os_libs += ['OleAut32.lib']
 elif os.name == 'posix':
     os_libs += ['-ldl']
-SETUP_DIR = os.path.dirname(os.path.realpath(__file__))
-DEPS_DIR = os.path.realpath(os.path.join(SETUP_DIR, 'deps'))
-SRC_DIR = os.path.realpath(os.path.join(SETUP_DIR, 'src'))
+SETUP_DIR = os.path.dirname(os.path.relpath(__file__))
+DEPS_DIR = os.path.relpath(os.path.join(SETUP_DIR, 'deps'))
+SRC_DIR = os.path.relpath(os.path.join(SETUP_DIR, 'src'))
 PACKAGE_DIR = os.path.join(SRC_DIR, 'titanarchive')
 BIN_DIR = os.path.join(SETUP_DIR, 'build')
 #####################
@@ -118,7 +118,7 @@ def linux_build(arch, debug=False):
         raise Exception('Unknown architecture specified')
 
     subprocess.run([gpp_path, *gpp_args, *src_files, '-o', bin_file, *os_libs], check=True)
-    bin_files.append(bin_file)
+    bin_files.append(os.path.relpath(bin_file))
 
 def sha256_file(path):
     h = hashlib.sha256()
