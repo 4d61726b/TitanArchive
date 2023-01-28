@@ -1,0 +1,4 @@
+deps/7z-src.tar.xz
+dist
+*.egg-info
+build

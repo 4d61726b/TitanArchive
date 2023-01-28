@@ -28,7 +28,7 @@ static unordered_map<wstring /* Name */, ArchiveType> s_mapSupportedTypes;
 // #define SINGLE_THREADED_ITERATION
 
 #ifdef SINGLE_THREADED_ITERATION
-#warning "Single threaded iteration is enabled"
+#pragma message("Single threaded iteration is enabled")
 #endif
 
 #define INIT_CHECK()                                                    \
@@ -302,14 +302,18 @@ ARCHIVER_STATUS C7ZipArchiver::ListDirectory(const wchar_t* wszPath, ArchiveItem
         
         for (uint32_t i = ui32Start; i < ui32End && !bHasFailure; ++i)
         {
-            wchar_t* pSlash;
+            wchar_t* pSlash = nullptr;
             
             if (FAILED(c7zPropPath.GetProperty(i, kpidPath)))
             {
                 continue;
             }
 
-            pSlash = wcsrchr(c7zPropPath->bstrVal, SLASH_CHAR);
+            if (c7zPropPath->bstrVal)
+            {
+                pSlash = wcsrchr(c7zPropPath->bstrVal, SLASH_CHAR);
+            }
+
             if (!pSlash)
             {
                 if (*wszPath == L'\0')
@@ -456,13 +460,20 @@ ARCHIVER_STATUS C7ZipArchiver::GetArchiveItemProperties(const wchar_t* wszPath, 
                 continue;
             }
             
-            if (wcscmp(wszPath, c7zPropPath->bstrVal) == 0)
+            if (c7zPropPath->bstrVal)
+            {
+                if (wcscmp(wszPath, c7zPropPath->bstrVal) == 0)
+                {
+                    ui32FoundItem = i;
+                }
+                else if (!bHasDirectory && wcswcs(c7zPropPath->bstrVal, wszPath) == c7zPropPath->bstrVal)
+                {
+                    bHasDirectory = true;
+                }
+            }
+            else if (wszPath[0] == L'\0')
             {
                 ui32FoundItem = i;
-            }
-            else if (!bHasDirectory && wcswcs(c7zPropPath->bstrVal, wszPath) == c7zPropPath->bstrVal)
-            {
-                bHasDirectory = true;
             }
         }
     }) == ARCHIVER_STATUS_FAILURE)
@@ -472,7 +483,7 @@ ARCHIVER_STATUS C7ZipArchiver::GetArchiveItemProperties(const wchar_t* wszPath, 
 
     if (ui32FoundItem == UINT_MAX)
     {
-        if (!bHasDirectory)
+        if (!bHasDirectory || wszPath[0] == L'\0')
         {
             SetError(E_FAIL, L"Path not found");
             return ARCHIVER_STATUS_FAILURE;
@@ -549,6 +560,17 @@ ARCHIVER_STATUS C7ZipArchiver::GetArchiveItemProperties(uint32_t ui32ItemIndex, 
     
     (*ppItem)->ui32Index = ui32ItemIndex;
     (*ppItem)->wszPath = c7zPropPath.Release().bstrVal;
+    if (!(*ppItem)->wszPath)
+    {
+        wchar_t* wszEmptyPath = SysAllocString(L"");
+        if (!wszEmptyPath)
+        {
+            SetError(E_OUTOFMEMORY, L"Unable to create empty path string");
+            free(*ppItem);
+            return ARCHIVER_STATUS_FAILURE;
+        }
+        (*ppItem)->wszPath = wszEmptyPath;
+    }
     (*ppItem)->cIsDir = c7zPropIsDir->boolVal == VARIANT_TRUE;
     (*ppItem)->ui64Size = c7zPropSize->uhVal.QuadPart;
     (*ppItem)->ftModTime = c7zPropMTime->filetime;
@@ -677,23 +699,15 @@ ARCHIVER_STATUS C7ZipArchiver::GetError(HRESULT* pHr, const wchar_t** ppError)
 
 ARCHIVER_STATUS C7ZipArchiver::GlobalInitialize(const wchar_t* wszLibPath)
 {
-    if (s_bIsInitialized)
-    {
-        return ARCHIVER_STATUS_SUCCESS;
-    }
-
     if (!wszLibPath)
     {
-#if defined(_WIN32)
-        wszLibPath = L"C:\\Program Files\\7-Zip\\7z.dll";
-#else
-#if defined(__GNUC__)
-        wszLibPath = L"/usr/lib/p7zip/7z.so";
-#else
-#error "Unknown Platform"
-#endif
-#endif
-        
+        SetGlobalError(E_FAIL, "7z library path missing");
+        return ARCHIVER_STATUS_FAILURE;
+    }
+
+    if (s_bIsInitialized)
+    {
+        GlobalUninitialize();
     }
 
     s_p7zModule = CompatDlopen(wszLibPath, RTLD_LOCAL | RTLD_NOW);
@@ -784,7 +798,9 @@ ARCHIVER_STATUS C7ZipArchiver::IterateItems(function<void(uint32_t /* Start inde
 {
     vector<thread> vecWorkers;
     uint32_t ui32ThreadCount = thread::hardware_concurrency();
+#ifndef SINGLE_THREADED_ITERATION
     constexpr uint32_t ui32ThreadThreshold = 500;
+#endif
     uint32_t ui32ItemCount = 0;
     HRESULT hr;
     
@@ -808,14 +824,14 @@ ARCHIVER_STATUS C7ZipArchiver::IterateItems(function<void(uint32_t /* Start inde
         ui32ThreadCount = 1;
 #ifndef SINGLE_THREADED_ITERATION
     }
-#endif    
+#endif
 
     for (uint32_t ui32Thread = 0; ui32Thread < ui32ThreadCount; ++ui32Thread)
     {
         uint32_t ui32Start = (ui32ItemCount / ui32ThreadCount) * ui32Thread;
         uint32_t ui32End = (ui32ItemCount / ui32ThreadCount) * (ui32Thread + 1);
         
-        if (ui32End > ui32ItemCount)
+        if (ui32End > ui32ItemCount || ui32Thread == ui32ThreadCount - 1)
         {
             ui32End = ui32ItemCount;
         }
@@ -829,7 +845,7 @@ ARCHIVER_STATUS C7ZipArchiver::IterateItems(function<void(uint32_t /* Start inde
 #endif
     }
 
-#ifndef SINGLE_THREADED_ITERATION    
+#ifndef SINGLE_THREADED_ITERATION
     for (thread& threadElem : vecWorkers)
     {
         threadElem.join();

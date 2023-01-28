@@ -25,13 +25,13 @@ using namespace std;
 #error "Unknown Platform"
 #endif
 
-HRESULT g_hrGlobalError = S_OK;
-std::wstring g_wstrGlobalError;
+static HRESULT s_hrGlobalError = S_OK;
+static std::wstring s_wstrGlobalError;
 
 void SetGlobalError(HRESULT hrError, const std::wstring& wstrError)
 {
-    g_hrGlobalError = hrError;
-    g_wstrGlobalError = wstrError;
+    s_hrGlobalError = hrError;
+    s_wstrGlobalError = wstrError;
 }
 
 void SetGlobalError(HRESULT hrError, const std::string& strError)
@@ -269,12 +269,12 @@ ARCHIVER_STATUS GetError(void* pCtx, HRESULT* pHr, const wchar_t** ppError)
 
     if (pHr)
     {
-        *pHr = g_hrGlobalError;
+        *pHr = s_hrGlobalError;
     }
 
     if (ppError)
     {
-        *ppError = g_wstrGlobalError.c_str();
+        *ppError = s_wstrGlobalError.c_str();
     }
 
     return ARCHIVER_STATUS_SUCCESS;

@@ -162,24 +162,52 @@ class ExtractionTests(unittest.TestCase):
         with titanarchive.TitanArchive(TEST_ZIP) as ta:
             self.assertEqual(ta.GetArchiveFormat(), 'zip')
     def test_PasswordIterations(self):
-        try:
-            with titanarchive.TitanArchive(PW_TEST_ZIP) as ta:
-                data = ta.ExtractArchiveItemToBufferByIndex(0, password = 'password')
+        i = 0
+        with titanarchive.TitanArchive(PW_TEST_ZIP) as ta:
+            try:
+                while True:
+                    if not ta.GetArchiveItemPropertiesByIndex(i).IsDir:
+                        break
+                    i += 1
+            except titanarchive.TitanArchiveException:
+                raise Exception('No files discovered in archive')
+        with titanarchive.TitanArchive(PW_TEST_ZIP) as ta:
+            data = ta.ExtractArchiveItemToBufferByIndex(i, password = 'password')
+            try:
+                data = ta.ExtractArchiveItemToBufferByIndex(i, password = 'wrongpassword')
+            except titanarchive.TitanArchiveException:
+                pass
+            else:
                 raise Exception('Unreachable')
-        except titanarchive.TitanArchiveException:
-            pass
-        try:
-            with titanarchive.TitanArchive(PW_TEST_ZIP, password = 'wrongpassword') as ta:
-                data = ta.ExtractArchiveItemToBufferByIndex(0, password = 'password')
+            try:
+                data = ta.ExtractArchiveItemToBufferByIndex(i)
+            except titanarchive.TitanArchiveException:
+                pass
+            else:
                 raise Exception('Unreachable')
-        except titanarchive.TitanArchiveException:
-            pass
-        try:
-            with titanarchive.TitanArchive(PW_TEST_ZIP, password = 'password') as ta:
-                data = ta.ExtractArchiveItemToBufferByIndex(0, password = 'wrongpassword')
+        with titanarchive.TitanArchive(PW_TEST_ZIP, password = 'wrongpassword') as ta:
+            data = ta.ExtractArchiveItemToBufferByIndex(i, password = 'password')
+            try:
+                data = ta.ExtractArchiveItemToBufferByIndex(i)
+            except titanarchive.TitanArchiveException:
+                pass
+            else:
                 raise Exception('Unreachable')
-        except titanarchive.TitanArchiveException:
-            pass
+            try:
+                data = ta.ExtractArchiveItemToBufferByIndex(i, password = 'wrongpassword')
+            except titanarchive.TitanArchiveException:
+                pass
+            else:
+                raise Exception('Unreachable')
+        with titanarchive.TitanArchive(PW_TEST_ZIP, password = 'password') as ta:
+            data = ta.ExtractArchiveItemToBufferByIndex(i, password = 'password')
+            data = ta.ExtractArchiveItemToBufferByIndex(i)
+            try:
+                data = ta.ExtractArchiveItemToBufferByIndex(i, password = 'wrongpassword')
+            except titanarchive.TitanArchiveException:
+                pass
+            else:
+                raise Exception('Unreachable')
     def test_MiscInvalid(self):
         with titanarchive.TitanArchive(TEST_ZIP) as ta:
             try:

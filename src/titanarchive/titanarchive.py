@@ -24,27 +24,34 @@ elif ctypes.sizeof(ctypes.c_voidp) == 8:
 else:
     raise Exception('Unknown architecture')
 
+TITAN_ARCHIVE_MODULE_NAME = 'TitanArchive{}{}'.format(bits, ext)
+TITAN_ARCHIVE_7Z_MODULE_NAME = 'TitanArchive{}-7z{}'.format(bits, ext)
+
 if sys.prefix == sys.base_prefix:
     if os.name == 'nt':
-        TITAN_ARCHIVE_MODULE = os.path.realpath(os.path.join(sys.prefix, 'DLLs', 'TitanArchive{}{}'.format(bits, ext)))
+        TITAN_ARCHIVE_MODULE_DIR = os.path.join(sys.prefix, 'DLLs')
     else:
-        TITAN_ARCHIVE_MODULE = os.path.realpath(os.path.join('/', 'usr', 'local', 'lib', 'TitanArchive{}{}'.format(bits, ext)))
+        TITAN_ARCHIVE_MODULE_DIR = os.path.join('/', 'usr', 'local', 'lib')
+    TITAN_ARCHIVE_MODULE = os.path.join(TITAN_ARCHIVE_MODULE_DIR, TITAN_ARCHIVE_MODULE_NAME)
 else:
     if os.name == 'nt':
         mod_dir = 'DLLs'
     else:
         mod_dir = 'lib'
-    TITAN_ARCHIVE_MODULE = os.path.realpath(os.path.join(sys.prefix, mod_dir, 'TitanArchive{}{}'.format(bits, ext)))
+
+    TITAN_ARCHIVE_MODULE_DIR = os.path.join(sys.prefix, mod_dir)
+    TITAN_ARCHIVE_MODULE = os.path.join(TITAN_ARCHIVE_MODULE_DIR, TITAN_ARCHIVE_MODULE_NAME)
     if not os.path.isfile(TITAN_ARCHIVE_MODULE):
-        TITAN_ARCHIVE_MODULE = os.path.realpath(os.path.join(sys.base_prefix, mod_dir, 'TitanArchive{}{}'.format(bits, ext)))
+        TITAN_ARCHIVE_MODULE_DIR = os.path.join(sys.base_prefix, mod_dir)
+        TITAN_ARCHIVE_MODULE = os.path.join(TITAN_ARCHIVE_MODULE_DIR, TITAN_ARCHIVE_MODULE_NAME)
 
 if not os.path.isfile(TITAN_ARCHIVE_MODULE):
-    raise Exception('Unable to find TitanArchive support module (%s)' % TITAN_ARCHIVE_MODULE)
+    raise Exception('Unable to find TitanArchive support module (%s)' % TITAN_ARCHIVE_MODULE_NAME)
 
-CODECS = {}
+TITAN_ARCHIVE_7Z_MODULE = os.path.join(TITAN_ARCHIVE_MODULE_DIR, TITAN_ARCHIVE_7Z_MODULE_NAME)
 
-if os.name == 'posix':
-    CODECS['Rar'] = '/usr/lib/p7zip/Codecs/Rar.so'
+if not os.path.isfile(TITAN_ARCHIVE_7Z_MODULE):
+    raise Exception('Unable to find TitanArchive 7z support module (%s)' % TITAN_ARCHIVE_7Z_MODULE)
 
 class TitanArchiveException(Exception):
     def __init__(self, hr, err_string):
@@ -120,14 +127,14 @@ class TitanArchive():
         if lib.GetArchiveFormat(self._ctx, ctypes.byref(rtn)) != ARCHIVER_STATUS_SUCCESS:
             raise TitanArchiveException(*self.GetError())
         return rtn.value
-        
+
     def GetArchiveItemCount(self):
         rtn = ctypes.c_uint()
         if lib.GetArchiveItemCount(self._ctx, ctypes.byref(rtn)) != ARCHIVER_STATUS_SUCCESS:
             raise TitanArchiveException(*self.GetError())
         return rtn.value
-    
-    def ListDirectory(self, path):
+
+    def ListDirectory(self, path = ''):
         rtn = []
         ai = ctypes.POINTER(_ArchiveItem)()
         count = ctypes.c_ulonglong()
@@ -162,14 +169,14 @@ class TitanArchive():
     def ExtractArchiveItemToBufferByIndex(self, index, password = None):
         size = self.GetArchiveItemPropertiesByIndex(index).Size
         rtn = BytesIO(bytearray(size))
-        if lib.ExtractArchiveItemToBufferByIndex(self._ctx, ctypes.c_uint(index), rtn.getvalue(), ctypes.c_ulonglong(size), ctypes.c_wchar_p(password)) != ARCHIVER_STATUS_SUCCESS:
+        if size and lib.ExtractArchiveItemToBufferByIndex(self._ctx, ctypes.c_uint(index), rtn.getvalue(), ctypes.c_ulonglong(size), ctypes.c_wchar_p(password)) != ARCHIVER_STATUS_SUCCESS:
             raise TitanArchiveException(*self.GetError())
         return rtn
 
     def ExtractArchiveItemToBufferByPath(self, path, password = None):
         size = self.GetArchiveItemPropertiesByPath(path).Size
         rtn = BytesIO(bytearray(size))
-        if lib.ExtractArchiveItemToBufferByPath(self._ctx, ctypes.c_wchar_p(path), ctypes.c_char_p(rtn.getvalue()), ctypes.c_ulonglong(size), ctypes.c_wchar_p(password)) != ARCHIVER_STATUS_SUCCESS:
+        if size and lib.ExtractArchiveItemToBufferByPath(self._ctx, ctypes.c_wchar_p(path), ctypes.c_char_p(rtn.getvalue()), ctypes.c_ulonglong(size), ctypes.c_wchar_p(password)) != ARCHIVER_STATUS_SUCCESS:
             raise TitanArchiveException(*self.GetError())
         return rtn
 
@@ -202,7 +209,7 @@ def GetGlobalError():
         raise TitanArchiveException(E_FAIL, 'Unable to get error')
     return (hr.value, err.value)
 
-def GlobalInitialize(lib_path = None):
+def GlobalInitialize(lib_path):
     if lib.GlobalInitialize(lib_path) != ARCHIVER_STATUS_SUCCESS:
         raise TitanArchiveException(*GetGlobalError())
 
@@ -290,8 +297,4 @@ lib.DeleteArchiveContext.restype = ctypes.c_uint
 lib.GetError.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_wchar_p)]
 lib.GetError.restype = ctypes.c_uint
 
-GlobalInitialize()
-
-for k,v in CODECS.items():
-    if os.path.isfile(v):
-        GlobalAddCodec(k, v)
+GlobalInitialize(TITAN_ARCHIVE_7Z_MODULE)
