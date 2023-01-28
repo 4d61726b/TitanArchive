@@ -1,5 +1,3 @@
 recursive-include src *
 recursive-include deps *
 recursive-include tests *
-recursive-include winbuild *
-recursive-include nixbuild *
