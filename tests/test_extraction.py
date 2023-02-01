@@ -137,6 +137,8 @@ class ExtractionTests(unittest.TestCase):
         else:
             raise Exception('Unknown Platform')
         extract_and_verify(self, ArchiveInputType.MEMORY, TEST_ZIP)
+    def test_GlobalArchiveFormats(self):
+        self.assertTrue(len(titanarchive.GlobalGetSupportedArchiveFormats()) > 50)
     def test_OpenFromMemory(self):
         extract_and_verify(self, ArchiveInputType.MEMORY, TEST_ZIP)
         extract_and_verify(self, ArchiveInputType.MEMORY, TEST_ZIP, 'zip')

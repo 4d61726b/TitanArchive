@@ -23,7 +23,8 @@ using fnGetHandlerProperty2 = HRESULT(*)(uint32_t, PROPID, PROPVARIANT*);
 static fnCreateObject s_CreateObject = nullptr;
 static fnGetNumberOfFormats s_GetNumberOfFormats = nullptr;
 static fnGetHandlerProperty2 s_GetHandlerProperty2 = nullptr;
-static unordered_map<wstring /* Name */, ArchiveType> s_mapSupportedTypes;
+static unordered_map<wstring /* Name */, ArchiveType> s_mapSupportedFormats;
+static wstring s_wstrSupportedFormats;
 
 // #define SINGLE_THREADED_ITERATION
 
@@ -88,7 +89,7 @@ ARCHIVER_STATUS C7ZipArchiver::OpenArchiveMemory(uint8_t* pBuf, uint64_t ui64Buf
         return ARCHIVER_STATUS_FAILURE;
     }
     m_pInArchive = pInArchive;
-    m_wszArchiveFormat = wszFormat;
+    m_wstrArchiveFormat = wszFormat;
 
     try
     {
@@ -256,7 +257,7 @@ ARCHIVER_STATUS C7ZipArchiver::GetArchiveFormat(const wchar_t** pwszFormat)
 {
     ARCHIVE_LOADED();
 
-    *pwszFormat = m_wszArchiveFormat;
+    *pwszFormat = m_wstrArchiveFormat.c_str();
 
     return ARCHIVER_STATUS_SUCCESS;
 }
@@ -662,7 +663,7 @@ ARCHIVER_STATUS C7ZipArchiver::CloseArchive()
         m_pInArchive = nullptr;
     }
 
-    m_wszArchiveFormat = nullptr;
+    m_wstrArchiveFormat.clear();
 
     m_cmMmap.Clear();
 
@@ -740,9 +741,9 @@ ARCHIVER_STATUS C7ZipArchiver::GlobalAddCodec(const wchar_t* wszFormat, const wc
         return ARCHIVER_STATUS_FAILURE;
     }
     
-    auto iterElem = s_mapSupportedTypes.find(wszFormat);
+    auto iterElem = s_mapSupportedFormats.find(wszFormat);
 
-    if (iterElem == s_mapSupportedTypes.end())
+    if (iterElem == s_mapSupportedFormats.end())
     {
         SetGlobalError(E_FAIL, "Format is not supported");
         return ARCHIVER_STATUS_FAILURE;
@@ -769,9 +770,22 @@ ARCHIVER_STATUS C7ZipArchiver::GlobalAddCodec(const wchar_t* wszFormat, const wc
     return ARCHIVER_STATUS_SUCCESS;
 }
 
+ARCHIVER_STATUS C7ZipArchiver::GlobalGetSupportedArchiveFormats(const wchar_t** ppArchiveFormats)
+{
+    if (!s_bIsInitialized)
+    {
+        SetGlobalError(E_FAIL, "GlobalInitialize has not been called");
+        return ARCHIVER_STATUS_FAILURE;
+    }
+
+    *ppArchiveFormats = s_wstrSupportedFormats.c_str();
+
+    return ARCHIVER_STATUS_SUCCESS;
+}
+
 void C7ZipArchiver::GlobalUninitialize()
 {
-    for (auto& iterSupportedType : s_mapSupportedTypes)
+    for (auto& iterSupportedType : s_mapSupportedFormats)
     {
         if (iterSupportedType.second.cmCodec.pModule)
         {
@@ -779,7 +793,8 @@ void C7ZipArchiver::GlobalUninitialize()
         }
     }
 
-    s_mapSupportedTypes.clear();
+    s_mapSupportedFormats.clear();
+    s_wstrSupportedFormats.clear();
 
     if (s_p7zModule)
     {
@@ -882,8 +897,8 @@ C7ZipArchiver::IInArchive* C7ZipArchiver::CreateInArchive(const wchar_t* wszForm
         return nullptr;
     }
 
-    auto iterElem = s_mapSupportedTypes.find(wszFormat);
-    if (iterElem == s_mapSupportedTypes.end())
+    auto iterElem = s_mapSupportedFormats.find(wszFormat);
+    if (iterElem == s_mapSupportedFormats.end())
     {
         SetError(E_FAIL, L"\"" + wstring(wszFormat) + L"\" is not a supported format");
         return nullptr;
@@ -924,7 +939,7 @@ C7ZipArchiver::IInArchive* C7ZipArchiver::CreateInArchive(const wchar_t* wszForm
 
 const wchar_t* C7ZipArchiver::DiscoverArchiveFormat(uint8_t* pBuf, uint64_t ui64BufSize)
 {
-    for (const auto& itElem : s_mapSupportedTypes)
+    for (const auto& itElem : s_mapSupportedFormats)
     {
         for (const auto& vecSig : itElem.second.vecSignatures)
         {
@@ -1038,9 +1053,14 @@ ARCHIVER_STATUS C7ZipArchiver::PopulateArchiveSupport()
         }
         iaElement.ui32SignatureOffset = c7zProp->ulVal;
 
-        s_mapSupportedTypes[wstrName] = iaElement;
-    }
+        s_mapSupportedFormats[wstrName] = iaElement;
 
+        if (!s_wstrSupportedFormats.empty())
+        {
+            s_wstrSupportedFormats += L",";
+        }
+        s_wstrSupportedFormats += wstrName;
+    }
 
     return ARCHIVER_STATUS_SUCCESS;
 }

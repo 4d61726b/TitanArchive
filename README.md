@@ -15,38 +15,48 @@ An easy to use multiplatform archive extraction wrapper library for [7-Zip](http
 
 #### Open archive on disk:
 ```python
-import titanarchive
+from titanarchive import TitanArchive
 
-with titanarchive.TitanArchive('test.zip') as ta:
+with TitanArchive('test.zip') as ta:
     # Do actions
 ```
 
 #### Open archive from memory buffer:
 ```python
-import titanarchive
+from titanarchive import TitanArchive
 
 data = open('test.zip', 'rb').read()
 
-with titanarchive.TitanArchive(data) as ta:
+with TitanArchive(data) as ta:
     # Do actions
 ```
 
 #### Open archive from file descriptor:
 ```python
 import os
-import titanarchive
+from titanarchive import TitanArchive
 
 fd = os.open('test.zip', os.O_RDONLY | (os.O_BINARY if os.name == 'nt' else 0))
 
-with titanarchive.TitanArchive(fd) as ta:
+with TitanArchive(fd) as ta:
     # Do actions
+```
+
+#### Show supported archive formats:
+```python
+import titanarchive
+
+print(titanarchive.GlobalGetSupportedArchiveFormats())
+```
+```console
+['APFS', 'APM', 'Ar', 'Arj', 'Base64', 'bzip2', 'Compound', 'Cpio', 'CramFS', 'Dmg', 'ELF', 'Ext', 'FAT', 'FLV', 'gzip', 'GPT', 'HFS', 'IHex', 'LP', 'Lzh', 'lzma', 'lzma86', 'MachO', 'MBR', 'MsLZ', 'Mub', 'NTFS', 'PE', 'COFF', 'TE', 'Ppmd', 'QCOW', 'Rpm', 'Sparse', 'Split', 'SquashFS', 'SWFc', 'SWF', 'UEFIc', 'UEFIf', 'VDI', 'VHD', 'VHDX', 'VMDK', 'Xar', 'xz', 'Z', '7z', 'Cab', 'Chm', 'Hxs', 'Iso', 'Nsis', 'Rar', 'Rar5', 'tar', 'Udf', 'wim', 'zip']
 ```
 
 #### Discover archive format:
 ```python
-import titanarchive
+from titanarchive import TitanArchive
 
-with titanarchive.TitanArchive('unknown.dat') as ta:
+with TitanArchive('unknown.dat') as ta:
     print('Format: {}'.format(ta.GetArchiveFormat()))
 ```
 ```console
@@ -55,7 +65,7 @@ Format: zip
 
 #### Print all files and directories in archive (Method 1, by path):
 ```python
-import titanarchive
+from titanarchive import TitanArchive
 import os
 
 def print_files(ta, path):
@@ -65,7 +75,7 @@ def print_files(ta, path):
             print_files(ta, full_path)
         print('Item: {}'.format(full_path))
 
-with titanarchive.TitanArchive('test.zip') as ta:
+with TitanArchive('test.zip') as ta:
     print_files(ta, '')
 ```
 ```console
@@ -84,9 +94,9 @@ Item: file_at_root.txt
 
 #### Print all files and directories in archive (Method 2, by index):
 ```python
-import titanarchive
+from titanarchive import TitanArchive
 
-with titanarchive.TitanArchive('test.zip') as ta:
+with TitanArchive('test.zip') as ta:
     try:
         index = 0
         while True:
@@ -112,9 +122,9 @@ Item: file_at_root.txt
 
 #### Extract file to memory (Method 1, by path):
 ```python
-import titanarchive
+from titanarchive import TitanArchive
 
-with titanarchive.TitanArchive('test.zip') as ta:
+with TitanArchive('test.zip') as ta:
     data = ta.ExtractArchiveItemToBufferByPath('dir1\\another_file.txt')
     print(data.read())
 ```
@@ -124,9 +134,9 @@ b'Test Data 123'
 
 #### Extract file to memory (Method 2, by index):
 ```python
-import titanarchive
+from titanarchive import TitanArchive
 
-with titanarchive.TitanArchive('test.zip') as ta:
+with TitanArchive('test.zip') as ta:
     properties = ta.GetArchiveItemPropertiesByPath('dir1\\another_file.txt')
     data = ta.ExtractArchiveItemToBufferByIndex(properties.Index)
     print(data.read())

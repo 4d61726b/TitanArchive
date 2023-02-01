@@ -78,6 +78,7 @@ public:
     ARCHIVER_STATUS GetError(HRESULT* pHr, const wchar_t** ppError) override;
     static ARCHIVER_STATUS GlobalInitialize(const wchar_t* wszLibPath);
     static ARCHIVER_STATUS GlobalAddCodec(const wchar_t* wszFormat, const wchar_t* wszLibPath);
+    static ARCHIVER_STATUS GlobalGetSupportedArchiveFormats(const wchar_t** pwszFormats);
     static void GlobalUninitialize();
 
 private:
@@ -700,7 +701,7 @@ private:
     static ARCHIVER_STATUS PopulateArchiveSupport();
 
     IInArchive* m_pInArchive = nullptr;
-    const wchar_t* m_wszArchiveFormat = nullptr;
+    std::wstring m_wstrArchiveFormat;
     
     int m_iFd = -1;
 

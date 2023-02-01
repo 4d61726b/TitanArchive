@@ -12,9 +12,10 @@ from urllib.request import urlretrieve
 from wheel.bdist_wheel import bdist_wheel
 from setuptools.command.sdist import sdist
 from setuptools.command.build_clib import build_clib
-from setuptools.command.install import install
 
-VERSION = '2.0'
+VERSION = '2.1'
+
+SUPPORTED_PLATFORMS = ['win-amd64', 'win32', 'linux-x86_64', 'linux-x86']
 
 if os.name == 'nt':
     import vswhere
@@ -97,9 +98,20 @@ def linux_build(arch, debug=False):
     with tempfile.TemporaryDirectory() as tmpdirname:
         extract_deps(tmpdirname)
         p7zip_build_dir = os.path.join(tmpdirname, '7z-src', 'CPP', '7zip', 'Bundles', 'Format7zF')
-        subprocess.run(['make', '-f', 'makefile.gcc'], cwd=p7zip_build_dir, check=True)
+
+        if arch == 32:
+            os.environ['USE_ASM'] = ''
+            p7zip_build_args = ['make', '-f', '../../cmpl_gcc_x86.mak', '-e']
+            out_dir = os.path.join(p7zip_build_dir, 'b', 'g_x86')
+        elif arch == 64:
+            p7zip_build_args = ['make', '-f', 'makefile.gcc']
+            out_dir = os.path.join(p7zip_build_dir, '_o')
+        else:
+            raise Exception('Unknown architecture specified')
+
+        subprocess.run(p7zip_build_args, cwd=p7zip_build_dir, check=True)
         bin_file = os.path.join(BIN_DIR, 'TitanArchive{}-7z.so'.format(arch))
-        shutil.copy2(os.path.join(p7zip_build_dir, '_o', '7z.so'), bin_file)
+        shutil.copy2(os.path.join(out_dir, '7z.so'), bin_file)
         bin_files.append(os.path.relpath(bin_file))
 
     gpp_args = ['-shared', '-fPIC', '-Wall', '-std=c++14']
@@ -114,8 +126,6 @@ def linux_build(arch, debug=False):
         bin_file = os.path.join(BIN_DIR, 'TitanArchive32.so')
     elif arch == 64:
         bin_file = os.path.join(BIN_DIR, 'TitanArchive64.so')
-    else:
-        raise Exception('Unknown architecture specified')
 
     subprocess.run([gpp_path, *gpp_args, *src_files, '-o', bin_file, *os_libs], check=True)
     bin_files.append(os.path.relpath(bin_file))
@@ -161,15 +171,11 @@ def build_code(plat_name, debug):
     else:
         raise Exception('Unknown / Missing build platform specified')
 
-class TitanArchiveInstall(install):
-    def run(self):
-        build_code(sysconfig.get_platform(), False)
-        install.run(self)
-
 class TitanArchiveBuildCLib(build_clib):
     user_options = [('debug', 'g', 'compile with debugging information'), ('platform=', 'p', 'specify the target platform')]
 
     def run(self):
+        download_deps()
         build_code(self.platform, False if self.debug is None else True)
 
     def initialize_options(self):
@@ -178,6 +184,12 @@ class TitanArchiveBuildCLib(build_clib):
 
 class TitanArchiveBDistWheel(bdist_wheel):
     def run(self):
+        if not self.plat_name_supplied:
+            self.plat_name = sysconfig.get_platform()
+            self.plat_name_supplied = True
+        if self.plat_name not in SUPPORTED_PLATFORMS:
+            raise Exception('Invalid platform name. Options: {}'.format(SUPPORTED_PLATFORMS))
+        download_deps()
         build_code(self.plat_name, False)
         bdist_wheel.run(self)
 
@@ -197,7 +209,6 @@ setuptools.setup(
     packages = setuptools.find_packages(where=SRC_DIR),
     package_dir = {'': SRC_DIR},
     python_requires = '>=3',
-    cmdclass = {'bdist_wheel': TitanArchiveBDistWheel, 'sdist': TitanArchiveSDist, 'build_clib': TitanArchiveBuildCLib, 'install': TitanArchiveInstall},
+    cmdclass = {'bdist_wheel': TitanArchiveBDistWheel, 'sdist': TitanArchiveSDist, 'build_clib': TitanArchiveBuildCLib},
     data_files = [('DLLs' if os.name == 'nt' else 'lib', bin_files)],
-    has_ext_modules = lambda: True
 )

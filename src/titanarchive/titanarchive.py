@@ -209,14 +209,20 @@ def GetGlobalError():
         raise TitanArchiveException(E_FAIL, 'Unable to get error')
     return (hr.value, err.value)
 
-def GlobalInitialize(lib_path):
+def GlobalInitialize(lib_path = TITAN_ARCHIVE_7Z_MODULE):
     if lib.GlobalInitialize(lib_path) != ARCHIVER_STATUS_SUCCESS:
         raise TitanArchiveException(*GetGlobalError())
 
 def GlobalAddCodec(format, lib_path):
     if lib.GlobalAddCodec(format, lib_path) != ARCHIVER_STATUS_SUCCESS:
         raise TitanArchiveException(*GetGlobalError())
-        
+
+def GlobalGetSupportedArchiveFormats():
+    af = ctypes.c_wchar_p()
+    if lib.GlobalGetSupportedArchiveFormats(ctypes.byref(af)) != ARCHIVER_STATUS_SUCCESS:
+        raise TitanArchiveException(*GetGlobalError())
+    return af.value.split(',') if len(af.value) > 0 else []
+
 def GlobalUninitialize():
     lib.GlobalUninitialize()
 
@@ -229,6 +235,10 @@ lib.GlobalInitialize.restype = ctypes.c_uint
 # ARCHIVER_STATUS GlobalAddCodec(const wchar_t* wszFormat, const wchar_t* wszLibPath);
 lib.GlobalAddCodec.argtype = [ctypes.c_wchar_p, ctypes.c_wchar_p]
 lib.GlobalAddCodec.restype = ctypes.c_uint
+
+# ARCHIVER_STATUS GlobalGetSupportedArchiveFormats(const wchar_t** pwszFormats);
+lib.GlobalGetSupportedArchiveFormats.argtype = [ctypes.POINTER(ctypes.c_wchar_p)]
+lib.GlobalGetSupportedArchiveFormats.restype = ctypes.c_uint
 
 # void GlobalUninitialize()
 lib.GlobalUninitialize.argtypes = []
@@ -297,4 +307,4 @@ lib.DeleteArchiveContext.restype = ctypes.c_uint
 lib.GetError.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_wchar_p)]
 lib.GetError.restype = ctypes.c_uint
 
-GlobalInitialize(TITAN_ARCHIVE_7Z_MODULE)
+GlobalInitialize()

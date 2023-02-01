@@ -57,6 +57,7 @@ extern "C"
 {
     EXPORT ARCHIVER_STATUS GlobalInitialize(const wchar_t* wszLibPath);
     EXPORT ARCHIVER_STATUS GlobalAddCodec(const wchar_t* wszFormat, const wchar_t* wszLibPath);
+    EXPORT ARCHIVER_STATUS GlobalGetSupportedArchiveFormats(const wchar_t** pwszFormats);
     EXPORT void GlobalUninitialize();
     EXPORT void* CreateArchiveContext();
     EXPORT ARCHIVER_STATUS OpenArchiveMemory(void* pCtx, uint8_t* pBuf, uint64_t ui64BufSize, const wchar_t* wszPassword, const wchar_t* wszFormat);
@@ -97,6 +98,16 @@ ARCHIVER_STATUS GlobalAddCodec(const wchar_t* wszFormat, const wchar_t* wszLibPa
     }
 
     return C7ZipArchiver::GlobalAddCodec(wszFormat, wszLibPath);
+}
+
+ARCHIVER_STATUS GlobalGetSupportedArchiveFormats(const wchar_t** pwszFormats)
+{
+    if (!pwszFormats)
+    {
+        return ARCHIVER_STATUS_FAILURE;
+    }
+
+    return C7ZipArchiver::GlobalGetSupportedArchiveFormats(pwszFormats);
 }
 
 void GlobalUninitialize()
